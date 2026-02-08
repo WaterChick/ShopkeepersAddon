@@ -25,7 +25,14 @@ public class PersistantDataManager {
     }
 
     public static Double getPrice(ItemStack item) {
-        double price = item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(plugin, "itemprice"), PersistentDataType.DOUBLE);
+        if (item == null || item.getItemMeta() == null) {
+            return null;
+        }
+        Double price = item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(plugin, "itemprice"), PersistentDataType.DOUBLE);
+        if (price == null) {
+            debugLog("No price data found for item");
+            return null;
+        }
         debugLog("Price of item: " + price);
         return price;
     }

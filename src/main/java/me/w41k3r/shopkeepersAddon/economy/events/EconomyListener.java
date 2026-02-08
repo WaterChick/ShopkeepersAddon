@@ -79,7 +79,13 @@ public class EconomyListener implements Listener {
         debugLog("Recipe ingredient meta: " + (firstIngredient.hasItemMeta() ? firstIngredient.getItemMeta().toString() : "No meta"));
 
         if (isEconomyItem(firstIngredient)) {
-            if (!hasMoney(player, getPrice(firstIngredient))) {
+            Double price = getPrice(firstIngredient);
+            if (price == null) {
+                debugLog("Cannot process trade: item has no price data");
+                event.setCancelled(true);
+                return;
+            }
+            if (!hasMoney(player, price)) {
                 sendPlayerMessage(player, config.getString("messages.noMoney", "You don't have enough money!"));
                 event.setCancelled(true);
                 return;
@@ -102,6 +108,10 @@ public class EconomyListener implements Listener {
         Player player = event.getPlayer();
         Shopkeeper shopkeeper = event.getShopkeeper();
 
+        // Only handle economy items
+        if (!isEconomyItem(recipe.getItem1().copy())) {
+            return;
+        }
 
         if (event.getClickEvent().isShiftClick()){
             event.setCancelled(true);
@@ -109,13 +119,15 @@ public class EconomyListener implements Listener {
             return;
         }
 
-        if (isEconomyItem(recipe.getItem1().copy())) {
-            processEconomyTrade(player, shopkeeper, recipe);
-        }
+        processEconomyTrade(player, shopkeeper, recipe);
     }
 
     private void processEconomyTrade(Player player, Shopkeeper shopkeeper, TradingRecipe recipe) {
-        double price = getPrice(recipe.getItem1().copy());
+        Double price = getPrice(recipe.getItem1().copy());
+        if (price == null) {
+            debugLog("Cannot process trade: item has no price data");
+            return;
+        }
         Money.withdrawPlayer(player, price);
 
         if (!(shopkeeper instanceof AdminShopkeeper)) {
@@ -127,7 +139,11 @@ public class EconomyListener implements Listener {
     }
 
     private void processBulkTrade(Player player, Shopkeeper shopkeeper, TradingRecipe recipe, int tradeCount) {
-        double pricePerTrade = getPrice(recipe.getItem1().copy());
+        Double pricePerTrade = getPrice(recipe.getItem1().copy());
+        if (pricePerTrade == null) {
+            debugLog("Cannot process bulk trade: item has no price data");
+            return;
+        }
         double totalPrice = pricePerTrade * tradeCount;
 
         if (!hasMoney(player, totalPrice)) {
@@ -216,7 +232,13 @@ public class EconomyListener implements Listener {
     private void processEconomyTradeClick(InventoryClickEvent event, Player player, MerchantRecipe recipe) {
         Shopkeeper shopkeeper = ShopkeepersAPI.getUIRegistry().getUISession(player).getShopkeeper();
         boolean isAdminShopkeeper = shopkeeper instanceof AdminShopkeeper;
-        double pricePerTrade = getPrice(recipe.getResult());
+        Double pricePerTrade = getPrice(recipe.getResult());
+
+        if (pricePerTrade == null) {
+            debugLog("Cannot process trade: item has no price data");
+            event.setCancelled(true);
+            return;
+        }
 
         int maxTrades = calculateMaxTrades(event, recipe, shopkeeper, pricePerTrade);
         if (maxTrades <= 0) {
